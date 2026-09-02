@@ -1,0 +1,14 @@
+# Python Environment & Cache
+**/venv/
+**/__pycache__/
+*.pyc
+
+# Heavy Model Weights & Binaries
+*.pth
+*.onnx
+
+# Test Audio Files
+*.wav
+
+# Environment Variables & Secrets
+.env
