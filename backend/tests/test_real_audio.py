@@ -1,75 +1,62 @@
-import os
+# tests/test_ws_pcm_client.py
+# Streams a real WAV file to the /ws/audio-stream endpoint as raw 16-bit PCM
+# chunks (headerless), matching exactly what score_pcm_bytes expects.
+
+import asyncio
 import sys
-import json
-import torch
-import torchaudio
-import soundfile as sf
 import numpy as np
+import soundfile as sf
+import websockets
 
-# Point Python to the root directory so it can find the aasist architecture
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from aasist.models.AASIST import Model
+CHUNK_MS = 500          # matches your 500ms chunking assumption
+SAMPLE_RATE = 16000      # matches AASIST-L's expected input rate
+WS_URL = "ws://127.0.0.1:8000/ws/audio-stream"
 
-def load_real_model():
-    # Updated paths for the new production folder structure
-    config_path = "../aasist/config/AASIST-L.conf"
-    weights_path = "../aasist/AASIST-L.pth"
-    
-    with open(config_path, "r") as f:
-        config = json.load(f)
-    
-    device = torch.device("cpu")
-    model = Model(config["model_config"]).to(device)
-    model.load_state_dict(torch.load(weights_path, map_location=device))
-    model.eval()
-    return model, device
 
-def check_audio(model, device, file_path):
-    print(f"\nAnalyzing: {file_path}")
-    if not os.path.exists(file_path):
-        print(f"File not found: {file_path}")
-        return
+def load_as_pcm16(file_path: str) -> bytes:
+    """Load any wav file, force mono + 16kHz + int16, return raw PCM bytes."""
+    data, sr = sf.read(file_path, dtype="float32")
 
-    data, sample_rate = sf.read(file_path, dtype="float32")
-    
-    if data.ndim == 1:
+    if data.ndim > 1:
+        data = data.mean(axis=1)  # downmix to mono
+
+    if sr != SAMPLE_RATE:
+        # simple resample via numpy (adequate for test purposes)
+        import torch
+        import torchaudio
         waveform = torch.from_numpy(data).unsqueeze(0)
-    else:
-        waveform = torch.from_numpy(data.T)
-    
-    if sample_rate != 16000:
-        resampler = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=16000)
-        waveform = resampler(waveform)
-    
-    if waveform.shape[0] > 1:
-        waveform = torch.mean(waveform, dim=0, keepdim=True)
-    
-    target_length = 64600
-    if waveform.shape[1] > target_length:
-        waveform = waveform[:, :target_length]
-    else:
-        pad_amount = target_length - waveform.shape[1]
-        waveform = torch.nn.functional.pad(waveform, (0, pad_amount))
-        
-    with torch.no_grad():
-        waveform = waveform.to(device) 
-        _, output = model(waveform)
-        
-        probabilities = torch.nn.functional.softmax(output, dim=1)
-        spoof_risk_score = probabilities[0][1].item()
-        
-    print(f"Risk Score: {spoof_risk_score * 100:.2f}%")
-    if spoof_risk_score > 0.60:
-        print("Verdict: 🚨 AI/CLONED VOICE DETECTED")
-    else:
-        print("Verdict: ✅ GENUINE HUMAN VOICE")
+        waveform = torchaudio.transforms.Resample(sr, SAMPLE_RATE)(waveform)
+        data = waveform.squeeze(0).numpy()
+
+    # float32 [-1, 1] -> int16 PCM
+    pcm16 = (data * 32767).astype(np.int16)
+    return pcm16.tobytes()
+
+
+async def stream_file(file_path: str):
+    pcm_bytes = load_as_pcm16(file_path)
+
+    bytes_per_sample = 2  # int16
+    chunk_samples = int(SAMPLE_RATE * (CHUNK_MS / 1000))
+    chunk_size = chunk_samples * bytes_per_sample
+
+    print(f"Loaded {file_path}: {len(pcm_bytes)} bytes, "
+          f"{len(pcm_bytes) // chunk_size} chunks of {chunk_size} bytes each")
+
+    async with websockets.connect(WS_URL) as ws:
+        for i in range(0, len(pcm_bytes), chunk_size):
+            chunk = pcm_bytes[i:i + chunk_size]
+            if len(chunk) < chunk_size:
+                # pad the final partial chunk with silence so it doesn't break framing
+                chunk = chunk + b"\x00" * (chunk_size - len(chunk))
+
+            await ws.send(chunk)
+            response = await ws.recv()
+            print(response)
+
+            await asyncio.sleep(CHUNK_MS / 1000)  # simulate real-time pacing
+
 
 if __name__ == "__main__":
-    print("Loading Pre-Trained AASIST-L Engine...")
-    model, device = load_real_model()
-    print("Engine Ready.")
-    
-    # Audio files are now in the same 'tests' directory as this script
-
-    check_audio(model, device, "genuine.wav")
-    check_audio(model, device, "spoofed.wav")
+    target_file = sys.argv[1] if len(sys.argv) > 1 else "genuine.wav"
+    asyncio.run(stream_file(target_file))
