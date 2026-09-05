@@ -1,0 +1,108 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── BASE RESET ───────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'tnum' 1, 'ss01' 1;
+}
+
+body {
+  margin: 0;
+  background: #06080e;
+  color: #e2e8f0;
+  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+}
+
+/* ─── TABULAR FIGURES FOR TELEMETRY ────────────────────────────── */
+.font-tabular {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* ─── SCROLLBAR ────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #06080e;
+}
+::-webkit-scrollbar-thumb {
+  background: #1b2436;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #222f47;
+}
+
+/* ─── SCANLINE OVERLAY ─────────────────────────────────────────── */
+.scanline-overlay {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+  mix-blend-mode: multiply;
+}
+
+/* ─── GLOW UTILITIES ───────────────────────────────────────────── */
+.glow-emerald {
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.15), 0 0 4px rgba(16, 185, 129, 0.1);
+}
+.glow-crimson {
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.2), 0 0 4px rgba(239, 68, 68, 0.15);
+}
+.glow-amber {
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.15), 0 0 4px rgba(245, 158, 11, 0.1);
+}
+
+/* ─── RISK PULSE BORDER ────────────────────────────────────────── */
+.border-pulse-crimson {
+  animation: borderPulse 1.2s ease-in-out infinite;
+}
+@keyframes borderPulse {
+  0%, 100% { border-color: rgba(239, 68, 68, 0.6); }
+  50%      { border-color: rgba(239, 68, 68, 0.15); }
+}
+
+/* ─── KEYPAD BUTTON PRESS ──────────────────────────────────────── */
+.keypad-btn {
+  transition: all 120ms ease;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.keypad-btn:active {
+  transform: scale(0.93);
+  background: #1b2436;
+}
+
+/* ─── CARD SURFACE ─────────────────────────────────────────────── */
+.card-surface {
+  background: #101623;
+  border: 1px solid #1b2436;
+  border-radius: 6px;
+}
+.card-surface:hover {
+  border-color: #222f47;
+}
+
+/* ─── STATUS DOT ───────────────────────────────────────────────── */
+@keyframes liveDot {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
+}
+.live-dot {
+  animation: liveDot 2s ease-in-out infinite;
+}

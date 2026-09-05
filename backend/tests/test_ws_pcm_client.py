@@ -19,6 +19,7 @@ async def stream_audio(file_path):
     print(f"Format: {wf.getframerate()}Hz, {wf.getnchannels()} channel(s), {wf.getsampwidth()*8}-bit")
 
     async with websockets.connect("ws://127.0.0.1:8000/ws/audio-stream") as ws:
+        await ws.send('{"sample_rate": 16000}')
         while True:
             # Read 500ms of raw PCM audio
             frames = wf.readframes(frames_per_chunk)

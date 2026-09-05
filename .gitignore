@@ -1,14 +1,88 @@
-# Python Environment & Cache
-**/venv/
-**/__pycache__/
-*.pyc
+# ==============================================================================
+# Spectra Project .gitignore
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Frontend (Node.js / React / Vite)
+# ------------------------------------------------------------------------------
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+.next/
+out/
+
+# Package manager logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ------------------------------------------------------------------------------
+# Backend (Python / FastAPI)
+# ------------------------------------------------------------------------------
+# Environments
+venv/
+.venv/
+env/
+ENV/
+
+# Cache & Compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
 
 # Heavy Model Weights & Binaries
 *.pth
 *.onnx
+*.onnx.data
+*.bin
+*.h5
+*.pb
 
-# Test Audio Files
+# Test Audio / Media Files
 *.wav
+*.mp3
+*.flac
+*.ogg
 
+# ------------------------------------------------------------------------------
 # Environment Variables & Secrets
+# ------------------------------------------------------------------------------
 .env
+.env.*
+!.env.example
+!.env.template
+*.pem
+*.key
+
+# ------------------------------------------------------------------------------
+# OS & IDE Files
+# ------------------------------------------------------------------------------
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+.gemini/
