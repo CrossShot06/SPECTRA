@@ -10,7 +10,7 @@ export function useWebRTCCall(
 ) {
   const [callState, setCallState] = useState('IDLE'); // IDLE, CALLING, CONNECTED, ERROR
   const [error, setError] = useState(null);
-  
+
   // Waveform state for the UI
   const waveformRef = useRef(new Float32Array(128));
   const [waveformTick, setWaveformTick] = useState(0);
@@ -19,7 +19,7 @@ export function useWebRTCCall(
   const signalingWsRef = useRef(null);
   const peerConnectionRef = useRef(null);
   const localStreamRef = useRef(null);
-  
+
   // Analysis Pipeline Refs (for remote audio)
   const audioCtxRef = useRef(null);
   const workletNodeRef = useRef(null);
@@ -75,7 +75,7 @@ export function useWebRTCCall(
 
       source.connect(workletNode);
       // We also connect the remote stream to destination so we can hear them!
-      source.connect(audioCtx.destination); 
+      source.connect(audioCtx.destination);
 
       // 4. Open WebSocket to existing backend pipeline
       const ws = new WebSocket(audioStreamUrl);
@@ -140,7 +140,6 @@ export function useWebRTCCall(
       });
       peerConnectionRef.current = pc;
 
-      // Add local track to peer connection
       stream.getTracks().forEach(track => {
         pc.addTrack(track, stream);
       });
@@ -149,6 +148,12 @@ export function useWebRTCCall(
       pc.ontrack = (event) => {
         if (event.streams && event.streams[0]) {
           const remoteStream = event.streams[0];
+          const audioTrack = remoteStream.getAudioTracks()[0];
+          console.log('[ontrack] track:', audioTrack,
+                      'enabled:', audioTrack?.enabled,
+                      'muted:', audioTrack?.muted,
+                      'readyState:', audioTrack?.readyState);
+
           setCallState('CONNECTED');
           setupAnalysisPipeline(remoteStream);
         }
@@ -164,12 +169,19 @@ export function useWebRTCCall(
         }
       };
 
-      // Handle Signaling Messages
+      // Handle Signaling Messages — SINGLE handler, role-aware
       signalingWs.onmessage = async (event) => {
         const message = JSON.parse(event.data);
-        
+
         try {
-          if (message.type === 'offer') {
+          if (message.type === 'role') {
+            if (message.role === 'offerer') {
+              const offer = await pc.createOffer();
+              await pc.setLocalDescription(offer);
+              signalingWs.send(JSON.stringify({ type: 'offer', offer }));
+            }
+            // 'answerer' just waits for the incoming offer below
+          } else if (message.type === 'offer') {
             await pc.setRemoteDescription(new RTCSessionDescription(message.offer));
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
@@ -184,25 +196,16 @@ export function useWebRTCCall(
         }
       };
 
-      // If we are the initiator (e.g. we connect, we should offer after a small delay 
-      // or we can just proactively offer. To be safe, we'll offer immediately upon connect).
-      signalingWs.onopen = async () => {
-        // Simple logic: whoever joins creates an offer. 
-        // If the other side is already there, they will answer.
-        try {
-          const offer = await pc.createOffer();
-          await pc.setLocalDescription(offer);
-          signalingWs.send(JSON.stringify({ type: 'offer', offer }));
-        } catch (err) {
-          console.error("Error creating offer", err);
-        }
+      signalingWs.onopen = () => {
+        // No-op: we wait for the server's 'role' message instead of
+        // proactively sending an offer, to avoid both peers offering at once.
       };
 
       signalingWs.onerror = () => {
         setError('Signaling server connection failed');
         cleanup();
       };
-      
+
       signalingWs.onclose = () => {
         cleanup();
       };
