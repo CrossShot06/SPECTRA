@@ -42,7 +42,7 @@ htmlcov/
 .ruff_cache/
 
 # Heavy Model Weights & Binaries
-*.pth
+
 *.onnx
 *.onnx.data
 *.bin
