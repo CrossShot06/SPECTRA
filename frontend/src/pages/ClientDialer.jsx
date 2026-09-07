@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import Keypad from '@/components/dialer/Keypad';
 import Waveform from '@/components/dialer/Waveform';
 import RiskBadge from '@/components/dialer/RiskBadge';
-import { useWebRTCCall } from '@/hooks/useWebRTCCall';
+import { useAudioStreamer } from '@/hooks/useAudioStreamer';
 
 /**
  * ClientDialer — Mobile-viewport VoIP dialer with live oscilloscope and risk banner.
@@ -15,10 +15,8 @@ export default function ClientDialer({ telemetry }) {
   const [callDuration, setCallDuration] = useState(0);
   const callTimerRef = useRef(null);
 
-  const { callState, startCall, endCall, waveformData, waveformTick, error } =
-    useWebRTCCall();
-  
-  const callActive = callState !== 'IDLE';
+  const { isStreaming: callActive, start: startCall, stop: endCall, waveformData, waveformTick, error } =
+    useAudioStreamer();
 
   const riskScore = telemetry?.risk_score || 0;
   const status = telemetry?.status || 'IDLE';
@@ -104,11 +102,10 @@ export default function ClientDialer({ telemetry }) {
 
         {/* Risk banner */}
         <div
-          className={`px-4 py-2 border-b border-spectra-border ${
-            callActive && riskScore >= 0.6
+          className={`px-4 py-2 border-b border-spectra-border ${callActive && riskScore >= 0.6
               ? 'bg-spectra-crimson/5'
               : 'bg-spectra-card/50'
-          }`}
+            }`}
         >
           <div className={`text-[10px] font-mono font-semibold tracking-wider text-center ${getBannerColor()}`}>
             {getBannerText()}
@@ -151,7 +148,7 @@ export default function ClientDialer({ telemetry }) {
         <div className="mx-4 mb-4 h-[80px] rounded-md border border-spectra-border overflow-hidden">
           <Waveform
             samples={waveformData}
-            isActive={callState === 'CONNECTED'}
+            isActive={callActive}
             riskScore={riskScore}
           />
         </div>
@@ -165,11 +162,10 @@ export default function ClientDialer({ telemetry }) {
         <div className="px-6 pb-6">
           <button
             onClick={handleCall}
-            className={`w-full h-[48px] rounded-lg flex items-center justify-center gap-2 font-semibold text-[13px] transition-all duration-150 cursor-pointer ${
-              callActive
+            className={`w-full h-[48px] rounded-lg flex items-center justify-center gap-2 font-semibold text-[13px] transition-all duration-150 cursor-pointer ${callActive
                 ? 'bg-spectra-crimson/15 border border-spectra-crimson/30 text-spectra-crimson hover:bg-spectra-crimson/25'
                 : 'bg-spectra-emerald/15 border border-spectra-emerald/30 text-spectra-emerald hover:bg-spectra-emerald/25'
-            }`}
+              }`}
           >
             {callActive ? (
               <>
